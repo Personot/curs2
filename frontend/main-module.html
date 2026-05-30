@@ -1,0 +1,319 @@
+<!-- РОДИТЕЛЬСКАЯ html страница для всех модулей -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>SupportAI - Личный кабинет</title>
+    <link rel="icon" type="image/png" href="/files/logo-site.png">
+    <canvas id="Canvas"></canvas>
+    
+    <!-- Базовые стили (всегда нужны) -->
+    <link rel="stylesheet" href="/css/base.css">
+    <link rel="stylesheet" href="/css/components/dark-theme.css">
+    <link rel="stylesheet" href="/css/components/keyframes.css">
+    <link rel="stylesheet" href="/css/components/calendare.css">
+    <link rel="stylesheet" href="/css/pages/sidebar.css">
+    <link rel="stylesheet" href="/css/pages/dashboard.css">
+    <link rel="stylesheet" href="/css/tickets/client-tickets.css">
+    <link rel="stylesheet" href="/css/tickets/operator-tickets.css">
+    <link rel="stylesheet" href="/css/tickets/expert-my-tickets.css">
+    <link rel="stylesheet" href="/css/aichat/universal-chat.css">
+    <link rel="stylesheet" href="/css/admin/admin-main-module.css">
+    <link rel="stylesheet" href="/css/pages/settings.css">
+    <link rel="stylesheet" href="/css/pages/settings-profile.css">
+    
+    <style>
+        body {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+        }
+        
+        body.loaded {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .initial-loader {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10000;
+            background: rgba(255,255,255,0.95);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .initial-loader p {
+            margin: 0;
+            color: #333;
+            font-family: Arial, sans-serif;
+        }
+        
+        .main-content {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        body.loaded .main-content {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div>
+            <img class="logo-img logo-light" src="/files/logo-light.png">
+            <img class="logo-img logo-dark" src="/files/logo-dark.png" style="display: none;">
+        </div>
+        <ul class="nav-links"></ul>
+        
+        <div class="language-selector">
+            <select id="globalLanguageSelect">
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="en">🇬🇧 English</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="fr">🇫🇷 Français</option>
+                <option value="de">🇩🇪 Deutsch</option>
+            </select>
+        </div>
+        
+        <a href="/PROFILE-SETTINGS" class="avatarlink">
+            <div class="user-profile">
+                <div class="avatar" id="userAvatar">ИИ</div>
+                <div>
+                    <div style="font-weight: 600;" id="userInfo">Загрузка...</div>
+                    <div style="font-size: 12px;" id="userRole">Роль</div>
+                </div>
+            </div>
+        </a>
+    </aside>
+
+    <main class="main-content">
+        <div id="app">
+            <div class="loader">Загрузка...</div>
+        </div>
+    </main>
+
+    <div id="ticketModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalBody">Загрузка...</div>
+        </div>
+    </div>
+
+    <script src="/scripts-js/site/socket.io.js"></script>
+    <script src="/scripts-js/site/dashboard-canvas.js"></script>
+    <script src="/scripts-js/site/translator.js"></script>
+    <script src="/scripts-js/site/universal-routers.js"></script>
+    <script src="/scripts-js/site/settings-full.js"></script>
+    <script src="/scripts-js/site/profiles.js"></script>
+    <script src="/scripts-js/calendare/calendare-libriry.js"></script>
+    <script src="/scripts-js/calendare/russian-local.js"></script>
+
+    <script>
+        (function() {
+            const loader = document.createElement('div');
+            loader.className = 'initial-loader';
+            loader.innerHTML = `
+                <div class="spinner"></div>
+                <p>Загрузка вашего рабочего пространства...</p>
+            `;
+            document.body.appendChild(loader);
+            
+            function loadScript(src) {
+                return new Promise((resolve, reject) => {
+                    const existingScript = document.querySelector(`script[src="${src}"]`);
+                    if (existingScript) {
+                        resolve();
+                        return;
+                    }
+                    
+                    const script = document.createElement('script');
+                    script.src = src;
+                    script.onload = resolve;
+                    script.onerror = () => reject(new Error(`Failed to load script: ${src}`));
+                    document.head.appendChild(script);
+                });
+            }
+            
+            const roleScriptsConfig = {
+                1: {
+                    name: 'Клиент',
+                    scripts: [
+                        '/scripts-js/client/dasboard-client.js',
+                        '/scripts-js/client/alltickets-client.js',
+                        '/scripts-js/client/chatai-allroles.js'
+                    ]
+                },
+                2: {
+                    name: 'Оператор',
+                    scripts: [
+                        '/scripts-js/operator/dashboard-operator.js',
+                        '/scripts-js/client/chatai-allroles.js'
+                    ]
+                },
+                3: {
+                    name: 'Эксперт',
+                    scripts: [
+                        '/scripts-js/expert/dashboard-expert.js',
+                        '/scripts-js/expert/expert-chat.js',
+                        '/scripts-js/expert/expert-my-tickets.js',
+                        '/scripts-js/client/chatai-allroles.js'
+                    ]
+                },
+                4: {
+                    name: 'Администратор',
+                    scripts: [
+                        '/scripts-js/admin/dashboard-admin.js',
+                        '/scripts-js/admin/admin-users.js',
+                        '/scripts-js/admin/admin-tickets.js',
+                        '/scripts-js/admin/admin-chat.js',
+                        '/scripts-js/admin/admin-ai.js',
+                        '/scripts-js/admin/admin-logs.js',
+                        '/scripts-js/client/chatai-allroles.js'
+                    ]
+                }
+            };
+            
+            function getRoleName(roleId) {
+                const roles = {
+                    1: 'Клиент',
+                    2: 'Оператор',
+                    3: 'Эксперт',
+                    4: 'Администратор'
+                };
+                return roles[roleId] || 'Пользователь';
+            }
+            
+            async function loadRoleSpecificScripts(roleId) {
+                const config = roleScriptsConfig[roleId];
+                if (!config) return;
+                
+                for (const script of config.scripts) {
+                    try {
+                        await loadScript(script);
+                    } catch (error) {
+                        console.error(`Error loading ${script}:`, error);
+                    }
+                }
+            }
+            
+            async function initUser() {
+                try {
+                    const cachedUser = sessionStorage.getItem('userData');
+                    const cachedTimestamp = sessionStorage.getItem('userDataTimestamp');
+                    const cacheAge = cachedTimestamp ? Date.now() - parseInt(cachedTimestamp) : Infinity;
+                    
+                    let user = null;
+                    
+                    if (cachedUser && cacheAge < 5 * 60 * 1000) {
+                        try {
+                            user = JSON.parse(cachedUser);
+                        } catch (e) {}
+                    }
+                    
+                    if (!user) {
+                        const response = await fetch('/api/auth/me', {
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        if (!response.ok) {
+                            throw new Error(`Not authenticated: ${response.status}`);
+                        }
+                        
+                        user = await response.json();
+                        sessionStorage.setItem('userData', JSON.stringify(user));
+                        sessionStorage.setItem('userDataTimestamp', Date.now().toString());
+                    }
+                    
+                    if (!user) {
+                        throw new Error('User data is empty');
+                    }
+                    
+                    const userEmail = user.email || user.username || user.login || 'Пользователь';
+                    const userFullName = user.full_name || user.name || userEmail;
+                    const roleId = user.role_id || user.roleId || user.role;
+                    
+                    const userInfoEl = document.getElementById('userInfo');
+                    const userRoleEl = document.getElementById('userRole');
+                    const userAvatarEl = document.getElementById('userAvatar');
+                    
+                    if (userInfoEl) userInfoEl.textContent = userFullName;
+                    if (userRoleEl) userRoleEl.textContent = getRoleName(roleId);
+                    if (userAvatarEl) {
+                        const firstChar = (userFullName && userFullName[0]) || (userEmail && userEmail[0]) || 'U';
+                        userAvatarEl.textContent = firstChar.toUpperCase();
+                    }
+                    
+                    if (roleId) {
+                        await loadRoleSpecificScripts(roleId);
+                    } else {
+                        await loadRoleSpecificScripts(1);
+                    }
+                    
+                    if (loader && loader.remove) {
+                        setTimeout(() => {
+                            loader.style.opacity = '0';
+                            setTimeout(() => {
+                                loader.remove();
+                                document.body.classList.add('loaded');
+                            }, 200);
+                        }, 100);
+                    } else {
+                        document.body.classList.add('loaded');
+                    }
+                    
+                    window.dispatchEvent(new CustomEvent('app-ready', { detail: { user, roleId } }));
+                    
+                    if (typeof window.initDashboard === 'function') {
+                        window.initDashboard(user);
+                    }
+                    
+                } catch (error) {
+                    if (loader) {
+                        loader.innerHTML = `
+                            <div style="color: red;">❌ Ошибка загрузки</div>
+                            <p style="margin-top: 10px;">${error.message}</p>
+                            <button onclick="window.location.href='/htmls/auth/login-client.html'" 
+                                    style="margin-top: 15px; padding: 8px 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;">
+                                Перейти на страницу входа
+                            </button>
+                        `;
+                    }
+                    
+                    setTimeout(() => {
+                        window.location.href = '/htmls/auth/login-client.html';
+                    }, 2000);
+                }
+            }
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initUser);
+            } else {
+                initUser();
+            }
+        })();
+    </script>
+</body>
+</html>

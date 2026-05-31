@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+env.txt
+
+# Dependencies from host
+node_modules
+backend/node_modules
+frontend/node_modules
+
+# Logs / runtime
+logs
+backend/logs
+*.log
+uploads
+frontend/uploads
+
+# Test / coverage
+coverage
+.nyc_output
+backend/__tests__
+
+# OS / IDE
+.vscode
+.idea
+.DS_Store
+Thumbs.db
